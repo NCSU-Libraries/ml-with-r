@@ -16,6 +16,10 @@
 ## Machine Learning in R
 ### Learning & Prediction
 
+Workshop [slides](https://docs.google.com/presentation/d/1pDXEntZ0RFFf_ORDYs4FtofBA_GPk5HJJ6qdl_ESpro/edit?usp=sharing)
+
 #### How to Use This Code
+
+
 
 
