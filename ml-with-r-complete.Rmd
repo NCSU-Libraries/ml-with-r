@@ -1,0 +1,668 @@
+---
+title: "Machine Learning in R"
+subtitle: "Regression and Prediction"
+author: "Kristopher Wilson"
+date: "March 11, 2026"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+## Learning Objectives
+
+- Understand machine learning as a modeling *framework* or *toolkit*, as opposed to a single method or collection of methods applicable to (nearly) every problem
+
+- Compare and contrast model-based and algorithmic approaches to **supervised learning** problems
+
+- Learn how data collection informs modeling choices
+
+- Fit and compare several machine learning methods in R
+
+## Setting up RStudio
+
+- **R** is a free software designed for working with data
+
+- **RStudio** is the application we use to work with R
+
+- Organized workspace to write instructions (code), see results, and manage files all in one place
+
+- For this workshop, we'll be using packages to assist us with our analysis
+
+- Packages are add-ons that can extend what R can do.
+
+- Instead of starting from scratch, we can use packages to make
+our lives easier
+
+## What We Won't Cover
+
+- *Machine learning* can broadly be split into two types:
+  - *Supervised learning*
+  - *Unsupervised learning*
+  
+- For *supervised learning*, this can be further split into:
+  - *Regression* tasks (average value of the response)
+  -  *Classification* tasks (most likely response from a set of
+        categories)
+
+## What We Won't Cover
+
+- We will focus on *regression*
+
+  - Not unsupervised learning or classification algorithms
+  
+  - Can't cover *all* regression either...
+  
+- Life is too short to spend too much of it doing math
+
+  - Mathematical foundations not covered in depth
+  
+- We will instead focus on:
+
+  - *Practical motivations*
+  
+  - Comparing methods
+  
+
+## What even is machine learning, anyway?
+
+- Idea: Our response $Y$ is related to features $\mathbf{X}$ through a function $f$.
+
+- We never observe this relationship perfectly; there is error $\varepsilon$.
+  - $\varepsilon$ is "everything affecting $Y$ not captured by $\mathbf{X}$".
+  - Model: 
+  
+  $$
+  Y = f(\mathbf{X}) + \varepsilon
+  $$
+- Want $f$ to be as close as possible to $Y$.
+
+  - **Goal:** for each $i=1,\ldots,n$, minimize $\varepsilon_i = Y_i - f(\mathbf{X}_i)$.
+
+- This is a hard problem!
+
+  - Could minimize mean absolute error:
+  
+    $$
+    \frac{1}{n}\sum_{i=1}^n |Y_i - f(\mathbf{X}_i)|
+    $$
+
+  - Could minimize sum of squared errors:
+  
+    $$
+    \sum_{i=1}^n (Y_i - f(\mathbf{X}_i))^2
+    $$
+    
+## Model-Based Learning
+
+- General framework consists of the following steps:
+
+- Specify a model for the conditional mean response $\mathbb{E}(Y\mid\mathbf{X})$ (that is, average value of $Y$ for given values of $\mathbf{X}$)
+
+- Specify an error structure for $\varepsilon$
+
+- Estimate parameters ($\hat{\beta}, \ \hat{\sigma}^2, \hat{f}$)
+- Interpret coefficients (if you're lucky!)
+
+## Parametric models
+
+- Idea: "Structure" of $Y$ (or $\mathbb{E}(Y\mid\mathbf{X})$) can be used to impose (reasonable) restrictions on the structure of $f$.
+  - If $\varepsilon$ is continuous and bell-shaped\*, then we can impose a **linear** restriction on $f$:
+  
+  - $f = \beta_0 + \sum_{j=1}^p \beta_j x_{ij}$
+  
+    - this is linear regression!
+    
+  - If the values $Y$ can take are constrained (ex: whole numbers, proportion, binary), then we can impose a linear restriction on $f$ through the mean response $\mathbb{E}(Y\mid\mathbf{X})$:
+  
+    - $g[\mathbb{E}(Y\mid\mathbf{X})] = f(\mathbf{X}) = \beta_0 + \sum_{j=1}^p \beta_j x_{ij}$
+    
+    - this a *generalized linear model*
+
+## Parametric models
+
+- **In each of the models shown so far, the shape of** *f*(**X**) **is specified ahead of time, as opposed to being shaped by the data**
+
+  - That is, we assume a specific form of *f*
+  
+  - These are all known as **parametric models**
+  
+- When we don't specify *f* ahead of time, we move into *semiparametric* or *nonparametric* models
+
+  - These include **generalized additive models** (GAMs) and tree-based methods, among others.
+  
+## Simple Linear Regression
+
+- Model takes the form $Y_i = \beta_0 + \sum_{j=1}^p \beta_j x_{ij} + \varepsilon_i$ where $j=1,\ldots,p$ is the number of predictors
+
+- For statistical inference, need to assume $\varepsilon_i \overset{\text{iid}}{\sim} N(0, \sigma^2)$
+
+- Called *simple linear regression* when $p=1$ because only one predictor
+
+- "linear" refers to **linear in the parameters** $\beta_j$, *not* $x_i$
+
+## First Example: Clinical Trial Publications:
+
+- Data comes from a 2013 study published in New England Journal of Medicine
+
+- Dataset contains publication times for 244 clinical trials funded by the National Heart, Lung, and Blood Institute
+
+- Some interesting variables:
+
+  - **posres**: indicator for trial significance
+  
+  - **budget**: budget of the trial (in millions of dollars)
+  
+  - **impact**: impact of the trial
+  
+  - **time**: time to publication (in months)
+  
+  - **status**: whether or not the trial was published at time
+
+- Some potential research questions:
+
+  1. What is the relationship between trial significance and publication time?
+  
+  2. Are more expensive trials more likely to get published?
+  
+## Loading the data into R
+
+In order to load the Publications data into R, we are going to use two packages: `tidyverse` and `ISLR2`. This requires two steps: installing the package, then loading it into our environment. Installing a package is like if a library or bookstore purchased a book. This is done with `install.packages` function:
+
+```{r install ISLR2, eval=FALSE}
+install.packages("ISLR2")
+```
+
+Next, we use `library` to load in the packages. This is akin to checking a book out from the library. If we close R and come back to our file, don't have to install the package again, but we do have to load it again.
+
+```{r loading pubs}
+library(tidyverse) # data manipulation
+library(ISLR2) # Publication dataset
+
+# actually put stuff in environment
+pubs <- ISLR2::Publication
+# not using data or force bc I don't want lazy loading, 
+# though lazy loading is efficient
+```
+
+The line `pubs <- ISLR2::Publication` is done so that R will forcefully load the dataset. R does what's called "lazy loading" which is efficient and saves memory. We don't care about that right now. The arrow sign (type `alt` and `-` simultaneously inside of a code chunk) is the assignment operator, assigning what's on the right hand side to what's on the left hand side. An equal sign `=` works just as well.
+
+## Simple linear regression demo.
+
+- Model takes the form $Y_i = \beta_0 + \sum_{j=1}^p \beta_j x_{ij} + \varepsilon_i$ where $j=1,\ldots,p$ is the number of predictors
+
+- For statistical inference, need to assume $\varepsilon_i \overset{\text{iid}}{\sim} N(0, \sigma^2)$
+
+- First question: are larger trials more expensive?
+
+  - **Reframe statistically:** is there a (linear) relationship between a trial's number of participants (`sampsize`) and its cost (`budget`)?
+  
+```{r slr demo}
+slr <- lm(budget ~ sampsize, data = pubs)
+summary(slr)
+```
+
+Significant result, but parameter estimate is small. Also, $R^2$* isn't great either. This is why exploratory data analysis (EDA) is important! We could learn a lot by plotting the data:
+
+*($R^2$ represents the proportion or percentage of variation in the response captured by the predictor(s). Higher = better)
+
+```{r plot pubs}
+plot(y = pubs$budget, x = pubs$sampsize)
+```
+
+Points are clustered around zero, and relationship doesn't seem linear. Let's see how the model fit:
+
+```{r assess slr 1}
+par(mfrow = c(2, 2))
+plot(slr)
+```
+
+For our purposes, let's look at the first two plots. The red line shows us mean zero, which is looks like it's violated, but not the main concern. The main concern is the nonconstant variance--we see this "fanning" effect: the spread between the residuals grows as the fitted values increase. This is also evident by this bowing or "S" shape in the second plot, called the QQ-plot.
+
+## How to Fix SLR
+
+**Main problem: nonconstant variance**
+
+First attempt: log transform. Often done to stabilize nonconstant variance
+
+```{r fix slr 1}
+summary(lm(log(budget) ~ sampsize, data = pubs))
+```
+
+$R^2$ actually went down! But let's see if the model fit better:
+
+```{r plot slr fix 1}
+par(mfrow = c(2, 2))
+plot(lm(log(budget) ~ sampsize, data = pubs))
+```
+
+QQ plot got better, but residual plot is still bad. A parabolic shape roughly appears. Perhaps try quadratic term?
+
+```{r quadratic fit}
+summary(lm(log(budget) ~ poly(sampsize, 2), data = pubs))
+```
+$R^2$ went back up. Let's check the plots:
+
+```{r quadratic plots}
+par(mfrow = c(2, 2))
+plot(lm(log(budget) ~ poly(sampsize, 2), data = pubs))
+```
+
+Plots look better but still not great. Also, the model is a lot more complicated.
+
+We can also assess model fit numerically instead of *only* graphically. One such metric is Akaike Information Criterion, or **AIC**. Lower is better!
+
+```{r compare slrs}
+AIC(lm(budget ~ sampsize, data = pubs))
+AIC(lm(log(budget) ~ sampsize, data = pubs))
+AIC(lm(log(budget) ~ poly(sampsize, 2), data = pubs))
+AIC(lm(budget ~ poly(sampsize, 2), data = pubs))
+
+# reset plots
+par(mfrow = c(1,1))
+```
+
+So the model $\log (\text{budget}) = 1.15 + 8.71(\text{sample size}) - 5.33(\text{sample size})^2$ is the best-fitting one, but this is quite hard to interpret, and sample size only explains around 34\% of the variation in the budget of a clinical trial.
+
+- Conclusion: maybe simple linear regression isn't the best here
+
+  - *maybe the relationship is truly nonlinear*
+  
+  - *maybe we are missing some predictors*
+  
+  - *maybe, maybe, maybe...*
+  
+## Generalized linear models
+
+- If $Y$ is constrained (ex: skewed, whole numbers, proportion), then we can impose a (linear) restriction on $f$: $g[\mathbb{E}(Y\mid\mathbf{X})]  = \beta_0 + \sum_{j=1}^p \beta_j x_{ij}$
+
+- core idea: choose a "smooth" function $g$ that maps the (conditional) mean of $Y$ from a constrained space to an unconstrained space. We call $g$ a link function because it links the mean response $\mathbb{E}(Y\mid\mathbf{X})$ to the predictor $\beta_0 + \sum_{j=1}^p \beta_j x_{ij}$
+
+## Examples of GLMs
+
+- Binary outcomes: logistic regression
+
+- Count data: Poisson regression
+
+- However, Poisson assumes mean of Y = variance of Y
+
+- Extensions exist to handle this (e.g., negative binomial)
+
+## Second Example: Warsaw Apartments
+
+- Dataset contains information about 409 apartments sold in Warsaw, Poland, during 2007-2009.
+
+- Quantity of interest is **floor area in square meters per million zloty** (Polish currency)
+
+- Main question of interest:
+  - How does the ratio of floor area to price depend on construction date of the apartment?
+  
+- Three major events occurred over the range of building dates (1930-2008):
+  - German invasion of Poland (1939)
+  - End of World War II and beginning of communist rule in Poland (1945)
+  - Start of martial law in Poland (1981)
+  
+- Poland became a democracy in 1989, and pre-war building quality was restored around 2000.
+
+- We can use statistics and machine learning to better understand how
+    these events influenced apartment prices in Poland.
+    
+
+just like ISLR2, need to install the package first. Comes from HRW    
+```{r install hrw, eval=FALSE}
+install.packages("HRW")
+```
+
+now load
+
+```{r load warsaw apartments data}
+library(HRW) # WarsawApts
+
+# actually put stuff in environment
+apts <- HRW::WarsawApts
+# not using data or force bc I don't want lazy loading, 
+# though lazy loading is efficient
+```
+
+## Poisson Regression Demo
+
+- After WWII, the goal was to build mass, affordable housing.
+
+- Uurbanization and modernist design ideology led to building "up," not "out."
+
+- Questions: Is this empirically true? Can we quantify it?
+
+Used the `lm` function to fit a linear model; use `glm` function to fit a generalized linear model. Must specify "family" for distribution of the mean response. Each family has a default link function $g$ that R will tell you in the output.
+
+```{r poisson regression demo}
+g <- glm(floor ~ construction.date, data = apts, family = poisson)
+summary(g)
+```
+
+Much like the linear model, we have a significant coefficient that's pretty close to zero, so it's hard to get a measure of *effect size*. That is, there's a statistically-significant change, but is there a practically significant effect happening?
+
+Why might the coefficient be $\approx 0$?
+
+  - because the range of construction dates is from 1930 to 2008! 
+  
+    - thus, the year-to-year change may be small, but over 10 or 20 years, it could be impactful
+
+Before addressing this, we should assess model fit.
+
+- we'll need to manually compute a residuals vs fitted value plot, since GLMs are special.
+
+```{r poisson regression assessment}
+f <- g$fitted.values
+#f <- fitted.values(g)
+r <- residuals(g, type = "deviance")
+plot(y = r, x = f) # mean zero? no pattern?
+abline(h = 0, col = "red") # h for height, col for color
+```
+
+Looks fine so far, but remember the mean/variance assumption. Let's check it:
+
+```{r poisson regression assessment pt 2}
+mean(apts$floor); var(apts$floor) 
+g$deviance / g$df.residual 
+```
+
+The mean and variance are clearly different! Additionally, `deviance / residual df` $> 1$, so we have *overdispersion* (variance > mean).
+
+  - this can lead to invalid inference!
+
+As mentioned, negative binomial can address this
+
+```{r nb}
+# may need to install MASS
+summary(MASS::glm.nb(floor ~ construction.date, data = apts))
+```
+
+- AIC is smaller, so this fits better. 
+
+- Estimated dispersion parameter >> 1, so binomial was the right call
+
+- residual deviance and degrees of freedom are about the same, so overdisperion has been accounted for.
+
+## Tuning Nonparametric models
+
+* Idea: use some of the data for "training" the model (selecting the best hyperparameters), then use the rest of the data to "test" the model (assess performance and choose the best model)
+
+  * We will use a 70/30 split: 70\% of the data used for training, and 30\% used for testing
+  
+* `sample()` takes a sample of rows from the data without replacement. Specifically, we are sampling indices (labels of the rows) such that we get 70\% of the data.
+
+  * Next, the objects labeled `train_` are the training subsets, while `test_` are the testing datasets.
+  
+```{r data split}
+set.seed(1887) # set seed for reproducibility
+
+# split pubs
+pubs_train_ids <- sample(1:nrow(pubs), 
+                         ceiling(0.7*nrow(pubs)))
+train_pubs <- pubs[pubs_train_ids,]
+test_pubs <- pubs[-pubs_train_ids,]
+
+# split apts
+apts_train_ids <- sample(1:nrow(apts), 
+                         ceiling(0.7*nrow(apts)))
+train_apts <- apts[apts_train_ids,]
+test_apts <- apts[-apts_train_ids,]
+rm(apts_train_ids, pubs_train_ids)
+```
+
+### K-Nearest Neighbors Regression demo
+
+We are going to use the `FNN` package to fit the k-nearest neighbors model, and the `caret` package (classification and regression training) to tune/pick the value of $k$.
+
+```{r knn libs}
+library(FNN) # going to use knn.reg to fit final model
+library(caret) # for tuning k
+```
+
+In order to tune hyperparameters, we are going to utilize cross-validation (specifically, k-fold cross validation). Cross-validation is when the data is partitioned (separated) into $k$ equal parts (called folds), then train the model $k$ times by using $k-1$ folds for training and use the remaining fold for testing. The folds being used for each round are rotated.
+
+```{r knn tune}
+# say, leave out first ten, then next ten, etc.
+ctrl <- trainControl(method = "cv", number = 10)
+
+# grid/range of k values to train over. doing 1-10 here
+kGrid <- expand.grid(k = seq(1, 10))
+
+# train k!
+set.seed(1887) # year ncsu was founded
+knn_model <- train(areaPerMzloty ~ ., data = train_apts,
+                   method = "knn", trControl = ctrl,
+                   tuneGrid = kGrid, 
+                   preProcess = c("center", "scale"))
+# distance based metric, so need to center and scale
+
+knn_model
+```
+
+RMSE (root mean squared error), Rsquared ($R^2$), and MAE (mean absolute error) are three potential metrics that can be used to pick the optimal value of $k$. `R` says it's going to use RMSE, but we could change this if we want to.
+
+Now let's use the best model to run predictions on the test set. `postResample` is an elegant function that computes performance metrics between the true values (in the test set) and the predicted values from the model
+
+```{r knn predict}
+# predict. keep this in mind for later models
+p <- predict(knn_model, newdata = test_apts)
+postResample(p, obs = test_apts$areaPerMzloty)
+```
+
+An $R^2$ of $\approx 0.2$ isn't great, but we have nothing to compare it to! Let's compare it to the negative binomial model we fit earlier:
+
+```{r knn vs nb}
+# compare to glm
+nb_model <- train(floor ~ construction.date, data = train_apts,
+                   method = "glm.nb", trControl = ctrl)
+
+# comparison
+resamps <- resamples(list(NegBin = nb_model, KNN = knn_model))
+
+summary(resamps)
+bwplot(resamps)
+```
+
+The negative binomial model performs better for RMSE and MAE, but not by $R^2$. However, $R^2$ is not a reliable metric for GLMs due to the transformations made. 
+
+So, if we had to choose which model to use, we should go with the negative binomial one. It's simpler and interpretable, and stacks up better when it comes to appropriate metrics.
+  
+## Decision trees
+
+- *Decision trees* split the data into nonoverlapping subgroups with similar responses.
+
+  - this is done by asking a series of binary (yes/no) questions about the predictors
+  
+  - Like KNN, predictions are made using the average of the response values in the final subgroups
+  
+**Recall the main question for the Warsaw Apartments:** How does the ratio of floor area to price depend on construction date of the apartment?
+
+First, we fit a single decision tree:
+
+```{r decision tree}
+library(rpart)
+init_tree <- rpart(areaPerMzloty ~ ., data = apts)
+rpart.plot::rpart.plot(init_tree)
+```
+
+Right away, we see something interesting:
+
+- if an apartment is built in 1998 or later, its predicted floor-area-to-price ratio is 92. 22\% of the data falls in this range.
+
+  - if built before 1998, then the predicted response depends on both construction date (specifically, 1930-1960 vs. 1961-1997) and the district the apartment was built in (Srodmiescie vs not Srodmiescie). After that, the surface area of the apartment matters.
+  
+  - this is an example of a complex interaction being captured quite easily (one of the perks of a nonparametric method)
+  
+However, a single decision tree isn't enough...
+
+## Random forests
+
+Better approach: combine the results from multiple trees
+
+- bootstrap: sample from the training data with replacement
+
+- aggregate: combine the results from many trees
+
+- more randomness: at each split, limit the predictors considered to a random subset of total predictors
+
+We are going to fit random forests with `ranger`, which is a faster implementation of the basic `randomForest` package.
+
+Just like with KNN, we are going to train with `caret`:
+
+  - we are going to create a grid of hyperparameters to search over. 
+  
+  - the hyperparameter $m_{try}$ is going to range from 1 to 6; 6 was chosen because that's the maximum number of predictors in the `WarsawApartments` dataset.
+  
+  - caret doesn't let you tune the number of trees; generally, error goes down as number of trees increases, but takes longer to train and fit. Default is p/3 for regression, which would be 2! difference is not a lot, though. 
+
+```{r rf tune}
+library(ranger)
+
+# tune with caret
+rf_tune_grid <- expand.grid(mtry = seq(1, 6, by = 1),
+                            splitrule = "variance",
+                            min.node.size = 5)
+set.seed(1887)
+
+rf_train <- train(areaPerMzloty ~ ., data = train_apts,
+                  method = "ranger", num.trees = 50,
+                  trControl = trainControl(method = "cv",
+                                           number = 5),
+                  tuneGrid = rf_tune_grid)
+ggplot(rf_train) + theme_classic()
+```
+
+We can use a variable importance plot to assess which variables are most important
+
+```{r rf vip}
+# which variables are the most important?
+vip::vip(init_tree, geom = "point") + theme_bw()
+# floor not important at all. construction date most important.
+# x axis has not interpretable meaning though; it's all relative
+```
+
+We now extract the tuned hyperparameters, and use those to fit the best model. After fitting, we compute predicted values and comapre them to the true values (the ones in the test set)
+
+```{r rf best fit}
+# fit best model
+rf_best <- ranger(areaPerMzloty ~ ., data = train_apts,
+                  num.trees = 50, mtry = rf_train$bestTune$mtry,
+                  importance = "impurity", 
+                  splitrule = rf_train$bestTune$splitrule,
+                  min.node.size = rf_train$bestTune$min.node.size)
+
+rf_preds <- predict(rf_best, data = test_apts)$predictions
+
+# revisit importance
+vip::vip(rf_best, geom = "point") + theme_bw()
+# floor jumped up. surface more important.
+```
+Construction date is still the most important, but surface increased importance as well. Notably, floor jumped up from being basically unimportant in a single tree to important in the random forest. Goes to show how variable decision trees can be!
+
+```{r rf test}
+# test!
+postResample(rf_preds, obs = test_apts$areaPerMzloty)
+```
+
+If we recall the KNN metrics, we can see that the random forest is better across the board: lower RMSE, higher $R^2$, lower MAE. The variable importance plot makes it a bit easier to interpret than KNN, so I'd subjectively say this is the "best" model so far.
+
+## Gradient boosted trees
+
+- Sequential model fitting:
+  - start with a small decision tree, then fit the next tree based upon the results of the previous one
+  
+- Emphasis on difficult observations
+  - done by using the residuals (errors) of the previous tree
+  
+- Hyperparameters: **learning rate**, **number of trees** tuned together
+  - **complexity of trees** captured by max depth and no. of obs in nodes
+  
+- Takeaway: *more complex than random forests, but more flexible*
+
+Much like random forests, we're going to first create a grid of possible hyperparameter values. However, since there are four hyperparameters to tune, the grid will be bigger
+
+```{r xgb tune}
+library(xgboost)
+xgboost_tune_grid <- expand.grid(
+  nrounds = seq(from = 20, to = 200, by = 20), # times to refit on residuals
+  eta = c(.025, .05, .1, .3), # learning rate. slower = better, but need to be aware of time
+  gamma = 0, # default
+  max_depth = c(1, 2, 3, 4), 
+  colsample_bytree = 1, # default
+  min_child_weight = 1, subsample = 1
+  ) 
+xgboost_tune_control <- trainControl(method = "cv",
+                                     number = 5,
+                                     verboseIter = F)
+set.seed(1887) # set seed since it's been awhile
+
+# tune xgb
+xgb_tune <- train(
+  x = as.matrix(model.matrix(areaPerMzloty ~ . -1, 
+                             data = train_apts)),
+  y = train_apts$areaPerMzloty,
+  trControl = xgboost_tune_control,
+  tuneGrid = xgboost_tune_grid,
+  #objective = "reg:squarederror", #default
+  method = "xgbTree", verbosity = 0)
+```
+
+Using the best tuned model to fit the xgboost. Notice how long it took to tune the xgboost. This is because there are a lot more moving parts. But fitting is quite easy!
+
+```{r xgb fit}
+# fit xgb
+xgb_fit <- xgboost(
+  data = as.matrix(model.matrix(areaPerMzloty ~ . -1, 
+                                data = train_apts)),
+  label = train_apts$areaPerMzloty,
+  objective = "reg:squarederror",
+  nrounds = xgb_tune$bestTune$nrounds,
+  params = as.list(dplyr::select(xgb_tune$bestTune, -nrounds)),
+  verbose = 0
+  )
+```
+
+Just like random forest, we can look at a variable importance plot for some level of interpetation
+
+```{r xgb vip}
+# variable importance!
+vip::vip(xgb_fit) + theme_bw()
+```
+As expected, construction date is far and away the most important. 
+
+Also, notice that the districts are named *explicitly*. That has a bit to do with how it's fed into the model.
+
+Let's test it!
+
+```{r xgb test}
+# test!
+# construct model matrix
+test_apts_matrix <- model.matrix(areaPerMzloty ~ . -1, 
+                                 data = test_apts)
+pred <- predict(xgb_fit, newdata = test_apts_matrix)
+postResample(pred = pred, obs = test_apts$areaPerMzloty)
+```
+
+Almost identical to the random forest. Slightly worse in MAE, better in RMSE and $R^2$. Which would you go with?
+
+The "true" best model--a generalized additive model--can be found in the slides.
+
+## Strengths and Limitations of Tree-Based Methods
+
+- Strong predictive accuracy
+  - ...if the relationship is truly complex
+- Few assumptions
+  - ...at the cost of interpretability
+- Limited inference ability
+  - an area of active research!
+  
+## Takeaways
+
+- Data collection influences model choice
+  - You wouldn't analyze a survey the same way you analyze a clinical trial!
+- Assumptions buy interpretability
+  - Clearer picture of what's driving change
+- Flexibility buys predictive power
+  - Very useful in some fields; not as useful in others
+- R supports the full modeling spectrum
