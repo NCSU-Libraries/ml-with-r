@@ -582,12 +582,6 @@ If we recall the KNN metrics, we can see that the random forest is better across
 
 Much like random forests, we're going to first create a grid of possible hyperparameter values. However, since there are four hyperparameters to tune, the grid will be bigger
 
-Due to some package conflicts, we're going to use an use older version of `xgboost`
-
-```{r old xgb}
-remotes::install_version("xgboost", version = "1.7.11.1")
-```
-
 ```{r xgb tune}
 library(xgboost)
 xgboost_tune_grid <- expand.grid(
@@ -671,5 +665,4 @@ The "true" best model--a generalized additive model--can be found in the slides.
   - Clearer picture of what's driving change
 - Flexibility buys predictive power
   - Very useful in some fields; not as useful in others
-
 - R supports the full modeling spectrum

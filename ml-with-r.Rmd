@@ -506,12 +506,6 @@ postResample(rf_preds, obs = test_apts$areaPerMzloty)
 
 Much like random forests, we're going to first create a grid of possible hyperparameter values. However, since there are four hyperparameters to tune, the grid will be bigger, so the model will take more time to tune.
 
-Due to some package conflicts, we're going to use an use older version of `xgboost`
-
-```{r old xgb, eval=FALSE}
-remotes::install_version("xgboost", version = "1.7.11.1")
-```
-
 ```{r xgb tune}
 library(xgboost)
 xgboost_tune_grid <- expand.grid(
@@ -594,5 +588,4 @@ The "true" best model--a generalized additive model--can be found in the slides.
   - Clearer picture of what's driving change
 - Flexibility buys predictive power
   - Very useful in some fields; not as useful in others
-
 - R supports the full modeling spectrum
