@@ -20,6 +20,13 @@ Workshop [slides](https://docs.google.com/presentation/d/1pDXEntZ0RFFf_ORDYs4Fto
 
 #### How to Use This Code
 
+1. Click on the green "<> Code" button at the top of the repository.
+2. Choose "Download ZIP". This will download the repo into your "Downloads" folder.
+3. Log into [Posit Workbench](https://rstudio.stat.ncsu.edu) using your UnityID and password.
+4. In RStudio, click on "Files" tab in the Output pane, click on "Upload".
+5. Under "File to upload:", click on "Choose File" which will open your file browser.
+6. Navigate to your Downloads file, open the repository directory and select "ml-with-r.Rmd".
 
+You should now be able to see the .Rmd file in your Posit environment.
 
 
